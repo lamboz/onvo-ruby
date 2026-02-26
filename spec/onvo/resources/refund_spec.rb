@@ -13,13 +13,13 @@ RSpec.describe Onvo::Refund do
       stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds", response_body: refund_response)
       described_class.create("pi_test_abc123")
       # Client omits body entirely when params are empty — no amount key in request
-      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/refunds")
-        .with { |req| req.body.nil? || req.body.empty? }
+      expect(WebMock).to(have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/refunds")
+        .with { |req| req.body.nil? || req.body.empty? })
     end
 
     it "passes reason to the API" do
       stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds",
-                response_body: refund_response("reason" => "fraudulent"))
+                response_body: refund_response("reason" => "fraudulent"),)
       described_class.create("pi_test_abc123", reason: "fraudulent")
       expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/refunds")
         .with(body: hash_including("reason" => "fraudulent"))
@@ -43,7 +43,7 @@ RSpec.describe Onvo::Refund do
     it "accepts all valid reasons without raising" do
       %w[duplicate fraudulent requested_by_customer].each do |reason|
         stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds",
-                  response_body: refund_response("reason" => reason))
+                  response_body: refund_response("reason" => reason),)
         expect { described_class.create("pi_test_abc123", reason: reason) }.not_to raise_error
       end
     end
@@ -70,7 +70,7 @@ RSpec.describe Onvo::Refund do
       stub_request(:get, "#{OnvoHelpers::TEST_API_BASE}/refunds")
         .with(query: hash_including("limit" => "5"))
         .to_return(status: 200, body: list_response(data: []).to_json,
-                   headers: { "Content-Type" => "application/json" })
+                   headers: { "Content-Type" => "application/json" },)
       result = described_class.list(limit: 5)
       expect(result).to be_a(Onvo::ListObject)
     end
