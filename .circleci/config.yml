@@ -1,13 +1,58 @@
 version: 2.1
+
+orbs:
+  ruby: circleci/ruby@2.1.4
+
 jobs:
-  build:
+  lint:
     docker:
-      - image: ruby:4.0.1
+      - image: cimg/ruby:3.3
     steps:
       - checkout
+      - ruby/install-deps
       - run:
-          name: Run the default task
-          command: |
-            gem install bundler -v 4.0.3
-            bundle install
-            bundle exec rake
+          name: Run RuboCop
+          command: bundle exec rubocop --format github
+
+  test:
+    parameters:
+      ruby-version:
+        type: string
+    docker:
+      - image: cimg/ruby:<< parameters.ruby-version >>
+    steps:
+      - checkout
+      - ruby/install-deps
+      - run:
+          name: Run RSpec
+          command: bundle exec rspec --format progress --format RspecJunitFormatter --out /tmp/test-results/rspec.xml
+      - store_test_results:
+          path: /tmp/test-results
+
+  build-gem:
+    docker:
+      - image: cimg/ruby:3.3
+    steps:
+      - checkout
+      - ruby/install-deps
+      - run:
+          name: Build gem
+          command: gem build onvo-ruby.gemspec
+      - store_artifacts:
+          path: "*.gem"
+
+workflows:
+  ci:
+    jobs:
+      - lint
+      - test:
+          matrix:
+            parameters:
+              ruby-version:
+                - "3.2"
+                - "3.3"
+                - "3.4"
+      - build-gem:
+          requires:
+            - lint
+            - test
