@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+require "onvo"
+
+# Quick setup for interactive experimentation.
+# Set ONVO_SECRET_KEY in your environment or configure here:
+#
+#   Onvo.configure do |c|
+#     c.secret_key = "sk_test_..."
+#     c.sandbox    = true
+#   end
+
+require "irb"
+IRB.start(__FILE__)
