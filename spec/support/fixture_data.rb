@@ -104,6 +104,19 @@ module FixtureData
     }
   end
 
+  def refund_response(overrides = {})
+    {
+      "id" => "re_test_abc123",
+      "object" => "refund",
+      "payment_intent_id" => "pi_test_abc123",
+      "amount" => 500,
+      "currency" => "USD",
+      "reason" => "requested_by_customer",
+      "status" => "succeeded",
+      "created_at" => "2026-01-15T10:30:00Z",
+    }.merge(overrides)
+  end
+
   def deleted_response(id)
     { "id" => id, "deleted" => true }
   end
