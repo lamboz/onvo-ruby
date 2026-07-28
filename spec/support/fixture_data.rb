@@ -83,13 +83,15 @@ module FixtureData
     }.merge(overrides)
   end
 
-  def webhook_endpoint_response(overrides = {})
+  def checkout_session_response(overrides = {})
     {
-      "id" => "we_test_abc123",
-      "object" => "webhook",
-      "url" => "https://example.com/webhooks",
-      "events" => ["payment_intent.succeeded"],
-      "active" => true,
+      "id" => "cs_test_abc123",
+      "object" => "checkout_session",
+      "url" => "https://checkout.onvopay.com/pay/cs_test_abc123",
+      "status" => "open",
+      "success_url" => "https://example.com/success",
+      "cancel_url" => "https://example.com/cancel",
+      "line_items" => [],
       "created_at" => "2026-01-15T10:30:00Z",
     }.merge(overrides)
   end

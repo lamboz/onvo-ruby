@@ -3,91 +3,62 @@
 module Onvo
   # Handles incoming webhook events from Onvo.
   #
-  # Use Webhook.construct_event to verify the signature and parse the payload:
+  # ONVO does not sign webhook payloads. Each webhook endpoint has a secret
+  # (visible in the ONVO Dashboard), and ONVO sends that same secret value
+  # verbatim in the `X-Webhook-Secret` header of every request. Verification
+  # is a direct (constant-time) comparison against the secret you have on
+  # file for that endpoint — there is no HMAC signature or payload signing.
   #
-  #   payload   = request.body.read
-  #   sig_header = request.env["HTTP_ONVO_SIGNATURE"]
-  #   secret    = ENV["ONVO_WEBHOOK_SECRET"]
+  # Use Webhook.construct_event to verify the header and parse the payload:
+  #
+  #   payload        = request.body.read
+  #   secret_header  = request.env["HTTP_X_WEBHOOK_SECRET"]
+  #   webhook_secret = ENV["ONVO_WEBHOOK_SECRET"]
   #
   #   begin
-  #     event = Onvo::Webhook.construct_event(payload, sig_header, secret)
+  #     event = Onvo::Webhook.construct_event(payload, secret_header, webhook_secret)
   #   rescue Onvo::SignatureVerificationError => e
-  #     # Invalid signature — reject the request
+  #     # Header missing or didn't match — reject the request
   #   end
   #
   #   case event.type
-  #   when "payment_intent.succeeded" then ...
-  #   when "subscription.created"     then ...
+  #   when "payment-intent.succeeded"       then ...
+  #   when "checkout-session.succeeded"     then ...
+  #   when "subscription.renewal.succeeded" then ...
   #   end
   module Webhook
-    DEFAULT_TOLERANCE = 300 # seconds (5 minutes)
-
-    # Verify the webhook signature, parse the payload, and return an OnvoObject.
+    # Verify the webhook secret header, parse the payload, and return an OnvoObject.
     #
     # @param payload [String] raw request body
-    # @param sig_header [String] value of the Onvo-Signature header
-    # @param secret [String] webhook endpoint's signing secret
-    # @param tolerance [Integer, nil] max age in seconds; nil disables the check
+    # @param secret_header [String] value of the X-Webhook-Secret header
+    # @param webhook_secret [String] the endpoint's secret, as configured in the ONVO Dashboard
     # @return [OnvoObject] parsed event
-    def self.construct_event(payload, sig_header, secret, tolerance: DEFAULT_TOLERANCE)
-      Signature.verify_header!(payload, sig_header, secret, tolerance: tolerance)
+    def self.construct_event(payload, secret_header, webhook_secret)
+      Signature.verify_header!(secret_header, webhook_secret)
       data       = JSON.parse(payload)
       normalized = Util.deep_snake_keys(data)
       OnvoObject.construct_from(normalized)
     end
 
-    # Webhook signature verification.
+    # Webhook secret verification.
     module Signature
-      # Verify a webhook signature header.
-      #
-      # Header format: "t=<unix_timestamp>,v1=<hmac_hex>"
+      # Verify the X-Webhook-Secret header against the configured secret.
       #
       # @raise [SignatureVerificationError] on any verification failure
       # @return [nil]
-      def self.verify_header!(payload, header, secret, tolerance: DEFAULT_TOLERANCE)
-        raise SignatureVerificationError, "No signature header present" if header.nil? || header.strip.empty?
-        raise SignatureVerificationError, "No webhook secret provided" if secret.nil? || secret.strip.empty?
-
-        parts     = parse_header(header)
-        timestamp = parts["t"]
-        signature = parts["v1"]
-
-        raise SignatureVerificationError, "Malformed signature header: #{header.inspect}" unless timestamp && signature
-
-        check_timestamp!(timestamp, tolerance)
-
-        expected = compute_signature(timestamp, payload, secret)
-        raise SignatureVerificationError, "Signature mismatch" unless secure_compare?(expected, signature)
+      def self.verify_header!(secret_header, webhook_secret)
+        raise SignatureVerificationError, "No webhook secret header present" if blank?(secret_header)
+        raise SignatureVerificationError, "No webhook secret configured" if blank?(webhook_secret)
+        raise SignatureVerificationError, "Webhook secret mismatch" unless secure_compare?(secret_header,
+                                                                                           webhook_secret,)
 
         nil
       end
 
-      # Compute the expected HMAC-SHA256 signature for a given payload.
-      # Exposed as a public method so tests can generate valid signatures.
-      def self.compute_signature(timestamp, payload, secret)
-        OpenSSL::HMAC.hexdigest("SHA256", secret, "#{timestamp}.#{payload}")
+      def self.blank?(value)
+        value.nil? || value.strip.empty?
       end
-
-      def self.check_timestamp!(timestamp, tolerance)
-        return unless tolerance
-
-        age = Time.now.to_i - Integer(timestamp)
-        return if age.abs <= tolerance
-
-        raise SignatureVerificationError,
-              "Webhook timestamp is too old or too new (#{age}s, tolerance #{tolerance}s)"
-      rescue ArgumentError
-        raise SignatureVerificationError, "Invalid timestamp value: #{timestamp.inspect}"
-      end
-      private_class_method :check_timestamp!
-
-      def self.parse_header(header)
-        header.split(",").each_with_object({}) do |part, hash|
-          k, v = part.split("=", 2)
-          hash[k.strip] = v&.strip
-        end
-      end
-      private_class_method :parse_header
+      private_class_method :blank?
 
       # Constant-time string comparison to prevent timing attacks.
       def self.secure_compare?(str_a, str_b)

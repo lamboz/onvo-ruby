@@ -2,22 +2,19 @@
 
 module Onvo
   # PaymentMethods represent saved or tokenized payment instruments
-  # (cards, SINPE Movil, etc.) attached to a Customer.
+  # (cards, SINPE Movil, etc.). Pass customer_id at creation time to
+  # attach it to a Customer immediately — ONVO has no separate attach step.
   #
+  #   pm = Onvo::PaymentMethod.create(type: "card", card: { token: "tok_123" }, customer_id: "cus_123")
   #   Onvo::PaymentMethod.retrieve("pm_123")
   #   Onvo::PaymentMethod.list(customer_id: "cus_123")
-  #   Onvo::PaymentMethod.attach("pm_123", customer_id: "cus_123")
   #   Onvo::PaymentMethod.detach("pm_123")
   class PaymentMethod < APIResource
     OBJECT_NAME = "payment_method"
 
+    extend Operations::Create
     extend Operations::Retrieve
     extend Operations::List
-
-    # Attach a PaymentMethod to a Customer.
-    def self.attach(id, client: default_client, **params)
-      request(:post, "#{resource_url_for(id)}/attach", params, client: client)
-    end
 
     # Detach a PaymentMethod from its Customer.
     def self.detach(id, client: default_client)

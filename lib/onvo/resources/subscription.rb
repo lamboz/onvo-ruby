@@ -1,17 +1,21 @@
 # frozen_string_literal: true
 
 module Onvo
-  # Subscriptions handle recurring billing for a Customer.
+  # Subscriptions ("cargos recurrentes") handle recurring billing for a Customer.
   #
   #   sub = Onvo::Subscription.create(
   #     customer_id: "cus_123",
-  #     items: [{ price_id: "price_456", quantity: 1 }]
+  #     items: [{ price_id: "price_456", quantity: 1 }],
+  #     trial_period_days: 14,
   #   )
   #   Onvo::Subscription.retrieve(sub.id)
   #   Onvo::Subscription.update(sub.id, metadata: { order_id: "6735" })
-  #   Onvo::Subscription.cancel(sub.id, at_period_end: true)
-  #   Onvo::Subscription.pause(sub.id)
-  #   Onvo::Subscription.resume(sub.id)
+  #   Onvo::Subscription.update(sub.id, cancel_at_period_end: true)
+  #   Onvo::Subscription.confirm(sub.id, payment_method_id: "pm_123")
+  #   Onvo::Subscription.cancel(sub.id)
+  #   Onvo::Subscription.add_item(sub.id, price_id: "price_789", quantity: 1)
+  #   Onvo::Subscription.update_item(sub.id, "si_1", quantity: 3)
+  #   Onvo::Subscription.remove_item(sub.id, "si_1")
   #   Onvo::Subscription.list(customer_id: "cus_123", status: "active")
   class Subscription < APIResource
     OBJECT_NAME = "subscription"
@@ -21,21 +25,33 @@ module Onvo
     extend Operations::Update
     extend Operations::List
 
-    # Cancel a subscription.
-    # @param params [Hash] optional: at_period_end: true, cancellation_reason: "..."
-    def self.cancel(id, client: default_client, **params)
-      request(:post, "#{resource_url_for(id)}/cancel", params, client: client)
+    # Cancel (immediately and permanently end) a subscription.
+    # To cancel at the end of the current billing period instead, use
+    # `update(id, cancel_at_period_end: true)`.
+    def self.cancel(id, client: default_client)
+      request(:delete, resource_url_for(id), {}, client: client)
     end
 
-    # Pause a subscription.
-    # @param params [Hash] optional: resumes_at: <unix_timestamp>
-    def self.pause(id, client: default_client, **params)
-      request(:post, "#{resource_url_for(id)}/pause", params, client: client)
+    # Confirm a subscription created with payment_behavior: "allow_incomplete".
+    # @param params [Hash] typically: payment_method_id: "..."
+    def self.confirm(id, client: default_client, **params)
+      request(:post, "#{resource_url_for(id)}/confirm", params, client: client)
     end
 
-    # Resume a paused subscription.
-    def self.resume(id, client: default_client)
-      request(:post, "#{resource_url_for(id)}/resume", {}, client: client)
+    # Add a recurring price item to an existing subscription.
+    # @param params [Hash] price_id: "...", quantity: <integer>
+    def self.add_item(id, client: default_client, **params)
+      request(:post, "#{resource_url_for(id)}/items", params, client: client)
+    end
+
+    # Update a subscription item (e.g. its quantity).
+    def self.update_item(id, item_id, client: default_client, **params)
+      request(:patch, "#{resource_url_for(id)}/items/#{item_id}", params, client: client)
+    end
+
+    # Remove an item from a subscription.
+    def self.remove_item(id, item_id, client: default_client)
+      request(:delete, "#{resource_url_for(id)}/items/#{item_id}", {}, client: client)
     end
   end
 end

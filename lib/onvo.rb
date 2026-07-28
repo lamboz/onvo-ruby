@@ -27,7 +27,7 @@ require_relative "onvo/resources/product"
 require_relative "onvo/resources/price"
 require_relative "onvo/resources/subscription"
 require_relative "onvo/resources/refund"
-require_relative "onvo/resources/webhook_endpoint"
+require_relative "onvo/resources/checkout_session"
 
 require_relative "onvo/webhook"
 

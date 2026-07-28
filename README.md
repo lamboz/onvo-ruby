@@ -81,7 +81,8 @@ pm = Onvo::PaymentMethod.retrieve("pm_123")
 pm.card.last4   # => "4242"
 pm.card.brand   # => "visa"
 
-Onvo::PaymentMethod.attach("pm_123", customer_id: "cus_123")
+# Pass customer_id to attach immediately — Onvo has no separate attach step.
+pm = Onvo::PaymentMethod.create(type: "card", card: { token: "tok_123" }, customer_id: "cus_123")
 Onvo::PaymentMethod.detach("pm_123")
 
 methods = Onvo::PaymentMethod.list(customer_id: "cus_123")
@@ -113,36 +114,54 @@ price.recurring.interval  # => "month"
 
 ```ruby
 sub = Onvo::Subscription.create(
-  customer_id: "cus_123",
-  items:       [{ price_id: "price_456", quantity: 1 }],
+  customer_id:        "cus_123",
+  items:               [{ price_id: "price_456", quantity: 1 }],
+  trial_period_days:   14,
+  payment_behavior:    "allow_incomplete", # create now, charge once confirmed
 )
 
 sub = Onvo::Subscription.retrieve(sub.id)
 sub = Onvo::Subscription.update(sub.id, metadata: { order_id: "789" })
+sub = Onvo::Subscription.update(sub.id, cancel_at_period_end: true)
 
-Onvo::Subscription.cancel(sub.id, at_period_end: true)
-Onvo::Subscription.pause(sub.id)
-Onvo::Subscription.resume(sub.id)
+Onvo::Subscription.confirm(sub.id, payment_method_id: "pm_123")
+Onvo::Subscription.cancel(sub.id) # immediate, permanent
+
+Onvo::Subscription.add_item(sub.id, price_id: "price_789", quantity: 1)
+Onvo::Subscription.update_item(sub.id, "si_1", quantity: 3)
+Onvo::Subscription.remove_item(sub.id, "si_1")
 
 subscriptions = Onvo::Subscription.list(customer_id: "cus_123", status: "active")
 ```
 
-### Webhook Endpoints
+### Checkout Sessions
+
+Onvo's hosted checkout: create a session, redirect the customer to its `url`,
+then trust the `checkout-session.succeeded` webhook (not the redirect) as
+confirmation. A line item's `price_id` can point at a recurring price to
+start a subscription through checkout.
 
 ```ruby
-endpoint = Onvo::WebhookEndpoint.create(
-  url:            "https://example.com/webhooks/onvo",
-  enabled_events: ["payment_intent.succeeded", "subscription.created"],
+session = Onvo::Checkout::Session.create(
+  line_items:     [{ price_id: "price_456", quantity: 1 }],
+  customer_email: "ana@example.com",
+  redirect_url:   "https://example.com/success",
+  cancel_url:     "https://example.com/cancel",
 )
+session.url    # => "https://checkout.onvopay.com/pay/..."
 
-Onvo::WebhookEndpoint.update(endpoint.id, enabled_events: ["*"])
-Onvo::WebhookEndpoint.delete(endpoint.id)
-endpoints = Onvo::WebhookEndpoint.list
+session = Onvo::Checkout::Session.retrieve(session.id)
+Onvo::Checkout::Session.update_customer(session.id, email: "nueva@example.com")
+Onvo::Checkout::Session.expire(session.id)
+
+sessions = Onvo::Checkout::Session.list
 ```
 
 ## Webhooks
 
-Verify the incoming signature and parse the event payload:
+Onvo doesn't sign webhook payloads — instead it sends the endpoint's own
+secret verbatim in the `X-Webhook-Secret` header. Verify it (a direct,
+constant-time comparison) and parse the event payload:
 
 ```ruby
 # Rails example
@@ -150,29 +169,35 @@ class WebhooksController < ApplicationController
   skip_before_action :verify_authenticity_token
 
   def create
-    payload    = request.body.read
-    sig_header = request.env["HTTP_ONVO_SIGNATURE"]
-    secret     = ENV["ONVO_WEBHOOK_SECRET"]
+    payload        = request.body.read
+    secret_header  = request.env["HTTP_X_WEBHOOK_SECRET"]
+    webhook_secret = ENV["ONVO_WEBHOOK_SECRET"]
 
     begin
-      event = Onvo::Webhook.construct_event(payload, sig_header, secret)
+      event = Onvo::Webhook.construct_event(payload, secret_header, webhook_secret)
     rescue Onvo::SignatureVerificationError => e
       render json: { error: e.message }, status: :bad_request and return
     end
 
     case event.type
-    when "payment_intent.succeeded"
+    when "payment-intent.succeeded"
       pi = event.data
       # fulfil the order
-    when "subscription.created"
-      sub = event.data
-      # provision the subscription
+    when "checkout-session.succeeded"
+      session = event.data
+      # provision access
+    when "subscription.renewal.succeeded"
+      renewal = event.data
+      # extend the billing period
     end
 
     head :ok
   end
 end
 ```
+
+Webhook endpoints are registered in the Onvo Dashboard, not via the API —
+there is no `WebhookEndpoint` resource.
 
 ## Multi-tenant usage
 

@@ -34,12 +34,11 @@ RSpec.describe Onvo::PaymentMethod do
     end
   end
 
-  describe ".attach" do
-    it "POSTs to /payment-methods/:id/attach" do
-      stub_onvo(:post, "/payment-methods/pm_test_abc123/attach",
-                response_body: payment_method_response("customer_id" => "cus_123"),)
-      result = described_class.attach("pm_test_abc123", customer_id: "cus_123")
-      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-methods/pm_test_abc123/attach")
+  describe ".create" do
+    it "POSTs to /payment-methods, optionally attaching a customer inline" do
+      stub_onvo(:post, "/payment-methods", response_body: payment_method_response("customer_id" => "cus_123"))
+      result = described_class.create(type: "card", card: { token: "tok_123" }, customer_id: "cus_123")
+      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-methods")
         .with(body: hash_including("customerId" => "cus_123"))
       expect(result.customer_id).to eq("cus_123")
     end

@@ -30,9 +30,9 @@ RSpec.describe Onvo::Customer do
   end
 
   describe ".update" do
-    it "PATCHes /customers/:id and returns the updated customer" do
+    it "POSTs to /customers/:id and returns the updated customer" do
       updated = customer_response("name" => "Ana M.")
-      stub_onvo(:patch, "/customers/cus_test_abc123", response_body: updated)
+      stub_onvo(:post, "/customers/cus_test_abc123", response_body: updated)
       result = described_class.update("cus_test_abc123", name: "Ana M.")
       expect(result.name).to eq("Ana M.")
     end
