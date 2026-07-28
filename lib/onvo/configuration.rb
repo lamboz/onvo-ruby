@@ -15,16 +15,21 @@ module Onvo
     SANDBOX_BASE    = "https://api.dev.onvopay.com/v1"
     PRODUCTION_BASE = "https://api.onvopay.com/v1"
 
-    attr_accessor :secret_key, :open_timeout, :read_timeout, :max_retries, :logger, :sandbox
+    attr_accessor :secret_key, :publishable_key, :open_timeout, :read_timeout, :max_retries, :logger, :sandbox
 
     def initialize
-      @secret_key   = ENV.fetch("ONVO_SECRET_KEY", nil)
-      env           = ENV.fetch("ONVO_SANDBOX", nil)
-      @sandbox      = env.nil? || %w[true 1 yes].include?(env.downcase)
-      @open_timeout = 30
-      @read_timeout = 60
-      @max_retries  = 2
-      @logger       = nil
+      @secret_key      = ENV.fetch("ONVO_SECRET_KEY", nil)
+      # The publishable key is safe to expose to the browser — it's what the
+      # client-side SDK (see README "Subscriptions with client-side card
+      # entry") needs to render its embedded card component. Distinct from
+      # secret_key, which must never leave the server.
+      @publishable_key = ENV.fetch("ONVO_PUBLISHABLE_KEY", nil)
+      env              = ENV.fetch("ONVO_SANDBOX", nil)
+      @sandbox         = env.nil? || %w[true 1 yes].include?(env.downcase)
+      @open_timeout    = 30
+      @read_timeout    = 60
+      @max_retries     = 2
+      @logger          = nil
     end
 
     # Returns the API base URL depending on sandbox mode.

@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-28
+
 Corrections against Onvo's real REST API (`docs.onvopay.com/openapi.yaml`) —
 several resources were previously modeled on an assumed Stripe-like shape
 that didn't match Onvo's actual endpoints.
@@ -25,9 +27,17 @@ that didn't match Onvo's actual endpoints.
 ### Added
 - `Onvo::Checkout::Session` — create/retrieve/list/confirm/expire, and
   update a session's line item or customer. Onvo's hosted checkout flow.
+  A line item's `price_id` can point at a recurring price, so this is also
+  the recommended way to start a subscription without touching a raw card.
 - `Subscription.confirm` — confirm a subscription created with
   `payment_behavior: "allow_incomplete"`.
 - `Subscription.add_item` / `.update_item` / `.remove_item`.
+- `Configuration#publishable_key` (+ `ONVO_PUBLISHABLE_KEY` env fallback) — safe
+  to expose to the browser, distinct from `secret_key`. Not required for the
+  Checkout Session flow above; reserved for any future client-side/embedded
+  integration.
+- The Refund resource's changelog entry (previously undocumented here despite
+  landing in a prior commit).
 
 ## [0.1.0] - 2026-02-26
 

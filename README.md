@@ -26,10 +26,13 @@ Onvo.secret_key = "sk_live_..."
 
 # Block form (recommended)
 Onvo.configure do |c|
-  c.secret_key  = "sk_live_..."
-  c.sandbox     = false        # default: true (points to api.dev.onvopay.com)
-  c.max_retries = 2            # default: 2 (retries on 429/500/network errors)
-  c.logger      = Rails.logger # optional
+  c.secret_key      = "sk_live_..."
+  c.publishable_key = "pk_live_..." # optional — safe to expose to the browser;
+                                     # not required for the hosted Checkout Session flow below,
+                                     # only for any future client-side/embedded integration
+  c.sandbox         = false         # default: true (points to api.dev.onvopay.com)
+  c.max_retries     = 2             # default: 2 (retries on 429/500/network errors)
+  c.logger          = Rails.logger  # optional
 end
 ```
 
@@ -37,6 +40,7 @@ Alternatively, set environment variables:
 
 ```bash
 ONVO_SECRET_KEY=sk_live_...
+ONVO_PUBLISHABLE_KEY=pk_live_...
 ONVO_SANDBOX=false
 ```
 

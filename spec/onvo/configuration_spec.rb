@@ -25,6 +25,10 @@ RSpec.describe Onvo::Configuration do
     it "defaults logger to nil" do
       expect(config.logger).to be_nil
     end
+
+    it "defaults publishable_key to nil" do
+      expect(config.publishable_key).to be_nil
+    end
   end
 
   describe "#api_base" do
@@ -49,6 +53,19 @@ RSpec.describe Onvo::Configuration do
 
     it "reads secret_key from ONVO_SECRET_KEY" do
       expect(described_class.new.secret_key).to eq("sk_from_env")
+    end
+  end
+
+  describe "publishable_key env var fallback" do
+    around do |example|
+      original = ENV.fetch("ONVO_PUBLISHABLE_KEY", nil)
+      ENV["ONVO_PUBLISHABLE_KEY"] = "pk_from_env"
+      example.run
+      ENV["ONVO_PUBLISHABLE_KEY"] = original
+    end
+
+    it "reads publishable_key from ONVO_PUBLISHABLE_KEY" do
+      expect(described_class.new.publishable_key).to eq("pk_from_env")
     end
   end
 
