@@ -35,6 +35,29 @@ RSpec.describe Onvo::PaymentIntent do
     end
   end
 
+  describe ".confirm" do
+    it "POSTs to /payment-intents/:id/confirm with paymentMethodId" do
+      stub = stub_onvo(:post, "/payment-intents/pi_test_abc123/confirm",
+                       response_body: payment_intent_response("status" => "requires_action"),)
+      result = described_class.confirm("pi_test_abc123", payment_method_id: "pm_test_abc123")
+      expect(stub).to have_been_requested
+      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/confirm")
+        .with(body: hash_including("paymentMethodId" => "pm_test_abc123"))
+      expect(result.status).to eq("requires_action")
+    end
+
+    it "forwards optional params (e.g. return_url for 3DS)" do
+      stub_onvo(:post, "/payment-intents/pi_test_abc123/confirm", response_body: payment_intent_response)
+      described_class.confirm(
+        "pi_test_abc123",
+        payment_method_id: "pm_test_abc123",
+        return_url: "https://example.com/return",
+      )
+      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/confirm")
+        .with(body: hash_including("returnUrl" => "https://example.com/return"))
+    end
+  end
+
   describe ".capture" do
     it "POSTs to /payment-intents/:id/capture" do
       stub = stub_onvo(:post, "/payment-intents/pi_test_abc123/capture",

@@ -4,6 +4,7 @@ module Onvo
   # A PaymentIntent guides a payment through the collection process.
   #
   #   pi = Onvo::PaymentIntent.create(amount: 5000, currency: "USD")
+  #   Onvo::PaymentIntent.confirm(pi.id, payment_method_id: "pm_123")
   #   Onvo::PaymentIntent.retrieve(pi.id)
   #   Onvo::PaymentIntent.capture(pi.id)
   #   Onvo::PaymentIntent.cancel(pi.id)
@@ -26,6 +27,18 @@ module Onvo
         params = params.merge(currency: params[:currency].to_s.upcase)
       end
       request(:post, resource_url, params, client: client)
+    end
+
+    # Confirm a PaymentIntent against a PaymentMethod, completing the charge
+    # (for a card) or entering the pending-transfer state (for a SINPE
+    # Móvil `mobile_number` PaymentMethod — see MobileTransfer).
+    #
+    # @param id [String] the PaymentIntent to confirm
+    # @param payment_method_id [String] a previously created PaymentMethod id
+    # @param params [Hash] optional: :cvv, :credix_installment_months, :return_url (for 3DS)
+    def self.confirm(id, payment_method_id:, client: default_client, **params)
+      request(:post, "#{resource_url_for(id)}/confirm",
+              params.merge(payment_method_id: payment_method_id), client: client,)
     end
 
     # Capture a previously authorized PaymentIntent.

@@ -30,7 +30,6 @@ Onvo.configure do |c|
   c.publishable_key = "pk_live_..." # optional — safe to expose to the browser;
                                      # not required for the hosted Checkout Session flow below,
                                      # only for any future client-side/embedded integration
-  c.sandbox         = false         # default: true (points to api.dev.onvopay.com)
   c.max_retries     = 2             # default: 2 (retries on 429/500/network errors)
   c.logger          = Rails.logger  # optional
 end
@@ -41,12 +40,11 @@ Alternatively, set environment variables:
 ```bash
 ONVO_SECRET_KEY=sk_live_...
 ONVO_PUBLISHABLE_KEY=pk_live_...
-ONVO_SANDBOX=false
 ```
 
-**API endpoints:**
-- Sandbox: `https://api.dev.onvopay.com/v1` (default)
-- Production: `https://api.onvopay.com/v1`
+**API endpoint:** `https://api.onvopay.com/v1` — there is no separate sandbox
+host. Test vs. live mode comes entirely from which key you use
+(`onvo_test_secret_key_...` vs. `onvo_live_secret_key_...`).
 
 ## Resources
 
@@ -91,6 +89,42 @@ Onvo::PaymentMethod.detach("pm_123")
 
 methods = Onvo::PaymentMethod.list(customer_id: "cus_123")
 ```
+
+### SINPE Móvil
+
+SINPE Móvil ("mobile_number" payment methods) works through the same
+PaymentIntent lifecycle as cards — create a PaymentMethod for the payer's
+phone + identification, then confirm a PaymentIntent against it:
+
+```ruby
+pm = Onvo::PaymentMethod.create(
+  type: "mobile_number",
+  mobile_number: {
+    number:              "+50688880000",
+    identification:      "01-1393-1919", # payer's cédula
+    identification_type: 0,              # 0 = cédula física — see ONVO docs for other types
+  },
+)
+
+pi = Onvo::PaymentIntent.create(amount: 15_000_00, currency: "CRC")
+pi = Onvo::PaymentIntent.confirm(pi.id, payment_method_id: pm.id)
+pi.status # => "requires_action" or similar — the payer still has to actually
+          #    send the SINPE transfer from their banking app to your
+          #    account's número móvil personalizado
+```
+
+ONVO tries to auto-link the payer's real SINPE Móvil transfer to this
+PaymentIntent by identity (phone + cédula), not amount, and fires
+`payment-intent.succeeded` once it does. When it can't — wrong sender,
+no matching pending intent — the transfer shows up in the reconciliation
+queue instead:
+
+```ruby
+Onvo::MobileTransfer.list(status: "charge_not_found,attempt_not_found")
+```
+
+This requires the "número móvil personalizado" feature enabled on your
+ONVO account — it isn't on by default.
 
 ### Products
 

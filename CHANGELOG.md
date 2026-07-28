@@ -1,4 +1,33 @@
-## [Unreleased]
+## [0.3.0] - 2026-07-28
+
+Verified against the full OpenAPI spec (`docs.onvopay.com/openapi.yaml`),
+not just the prose docs — caught two more real discrepancies from the
+previous correction pass, plus added SINPE Móvil support.
+
+### Fixed
+- **Breaking:** removed the fictional sandbox/dev host. The spec declares
+  exactly one server, `https://api.onvopay.com` — test vs. live mode comes
+  entirely from which API key prefix you use. `Configuration#sandbox` and
+  the `ONVO_SANDBOX` env var are gone; every request that previously ran
+  with `sandbox: true` (the default) was silently going to
+  `api.dev.onvopay.com`, a host ONVO doesn't serve.
+- **Breaking:** `Refund.create` now POSTs to the flat `/refunds` endpoint
+  with `paymentIntentId` in the body, not the nested
+  `/payment-intents/:id/refunds` the SDK previously assumed.
+
+### Added
+- `PaymentIntent.confirm(id, payment_method_id:, **params)` — was missing
+  entirely; required to complete any 100%-API integration (SDK-based card
+  flows don't need it, but SINPE Móvil and server-confirmed cards do).
+- `Onvo::MobileTransfer.list` — the SINPE Móvil reconciliation resource
+  (`GET /v1/mobile-transfers/list`). Read-only; surfaces inbound transfers
+  ONVO couldn't automatically match to a PaymentIntent. Note: the API's own
+  `SINPERefNumber` filter uses non-standard acronym casing that the SDK's
+  generic camelCase conversion can't derive from an idiomatic Ruby key —
+  pass it as `sinpe_ref_number:` and the resource translates it correctly.
+- `PaymentMethod.create(type: "mobile_number", mobile_number: {...})` was
+  already supported by the generic `Operations::Create` — documented in
+  the README with a full SINPE Móvil PaymentIntent + confirm example.
 
 ## [0.2.0] - 2026-07-28
 
