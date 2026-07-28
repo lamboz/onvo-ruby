@@ -28,6 +28,7 @@ require_relative "onvo/resources/price"
 require_relative "onvo/resources/subscription"
 require_relative "onvo/resources/refund"
 require_relative "onvo/resources/checkout_session"
+require_relative "onvo/resources/mobile_transfer"
 
 require_relative "onvo/webhook"
 
@@ -40,7 +41,6 @@ require_relative "onvo/webhook"
 # Or with a configuration block:
 #   Onvo.configure do |c|
 #     c.secret_key = "sk_live_..."
-#     c.sandbox    = false
 #   end
 module Onvo
   class << self
@@ -57,7 +57,7 @@ module Onvo
     end
 
     # Yield the Configuration object for block-style setup.
-    #   Onvo.configure { |c| c.secret_key = "sk_live_..."; c.sandbox = false }
+    #   Onvo.configure { |c| c.secret_key = "sk_live_..."; c.max_retries = 3 }
     def configure
       yield(configuration)
       @default_client = nil

@@ -119,6 +119,25 @@ module FixtureData
     }.merge(overrides)
   end
 
+  def mobile_transfer_response(overrides = {})
+    {
+      "id" => "mt_test_abc123",
+      "object" => "mobile_transfer",
+      "mode" => "test",
+      "amount" => 1_500_000,
+      "currency" => "CRC",
+      "status" => "received",
+      "description" => "Pago factura 12345",
+      "sinpe_ref_number" => "2025121616183220990502000",
+      "origin_id" => "01-1393-1919",
+      "origin_name" => "Juan Pérez Rodríguez",
+      "destination_phone" => "70196686",
+      "authorization_date" => "2026-01-15T14:30:00.000Z",
+      "created_at" => "2026-01-15T14:30:05.587Z",
+      "payment_intent_id" => "pi_test_abc123",
+    }.merge(overrides)
+  end
+
   def deleted_response(id)
     { "id" => id, "deleted" => true }
   end

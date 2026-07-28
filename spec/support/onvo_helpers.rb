@@ -2,7 +2,7 @@
 
 module OnvoHelpers
   TEST_SECRET_KEY = "sk_test_fake_key_for_testing"
-  TEST_API_BASE   = "https://api.dev.onvopay.com/v1"
+  TEST_API_BASE   = "https://api.onvopay.com/v1"
 
   # Stub an Onvo API request via WebMock.
   #

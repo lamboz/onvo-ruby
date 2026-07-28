@@ -2,26 +2,31 @@
 
 RSpec.describe Onvo::Refund do
   describe ".create" do
-    it "POSTs to /payment-intents/:id/refunds" do
-      stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds", response_body: refund_response)
+    it "POSTs to the flat /refunds endpoint, not nested under the PaymentIntent" do
+      stub_onvo(:post, "/refunds", response_body: refund_response)
       result = described_class.create("pi_test_abc123", amount: 500)
       expect(result.id).to eq("re_test_abc123")
       expect(result.payment_intent_id).to eq("pi_test_abc123")
     end
 
+    it "sends paymentIntentId in the request body" do
+      stub_onvo(:post, "/refunds", response_body: refund_response)
+      described_class.create("pi_test_abc123", amount: 500)
+      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/refunds")
+        .with(body: hash_including("paymentIntentId" => "pi_test_abc123"))
+    end
+
     it "issues a full refund when amount is omitted" do
-      stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds", response_body: refund_response)
+      stub_onvo(:post, "/refunds", response_body: refund_response)
       described_class.create("pi_test_abc123")
-      # Client omits body entirely when params are empty — no amount key in request
-      expect(WebMock).to(have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/refunds")
-        .with { |req| req.body.nil? || req.body.empty? })
+      expect(WebMock).to(have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/refunds")
+        .with { |req| !JSON.parse(req.body).key?("amount") })
     end
 
     it "passes reason to the API" do
-      stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds",
-                response_body: refund_response("reason" => "fraudulent"),)
+      stub_onvo(:post, "/refunds", response_body: refund_response("reason" => "fraudulent"))
       described_class.create("pi_test_abc123", reason: "fraudulent")
-      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/payment-intents/pi_test_abc123/refunds")
+      expect(WebMock).to have_requested(:post, "#{OnvoHelpers::TEST_API_BASE}/refunds")
         .with(body: hash_including("reason" => "fraudulent"))
     end
 
@@ -42,8 +47,7 @@ RSpec.describe Onvo::Refund do
 
     it "accepts all valid reasons without raising" do
       %w[duplicate fraudulent requested_by_customer].each do |reason|
-        stub_onvo(:post, "/payment-intents/pi_test_abc123/refunds",
-                  response_body: refund_response("reason" => reason),)
+        stub_onvo(:post, "/refunds", response_body: refund_response("reason" => reason))
         expect { described_class.create("pi_test_abc123", reason: reason) }.not_to raise_error
       end
     end

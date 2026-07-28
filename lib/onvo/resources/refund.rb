@@ -3,7 +3,11 @@
 module Onvo
   # A Refund represents a reversal of a previously confirmed PaymentIntent.
   #
-  # Refunds are always created as children of a PaymentIntent:
+  # Refunds are a top-level resource, not nested under PaymentIntent — the
+  # OpenAPI spec (docs.onvopay.com/openapi.yaml) defines POST /v1/refunds
+  # with paymentIntentId in the request body, not POST
+  # /payment-intents/:id/refunds. A prior version of this SDK modeled it as
+  # a Stripe-style nested resource, which doesn't match ONVO's real API.
   #
   #   refund = Onvo::Refund.create("pi_test_abc123", amount: 5000, reason: "requested_by_customer")
   #   Onvo::Refund.retrieve(refund.id)
@@ -29,7 +33,7 @@ module Onvo
       validate_payment_intent_id!(payment_intent_id)
       validate_reason!(params[:reason]) if params[:reason]
 
-      request(:post, "/payment-intents/#{payment_intent_id}/refunds", params, client: client)
+      request(:post, resource_url, params.merge(payment_intent_id: payment_intent_id), client: client)
     end
 
     def self.validate_payment_intent_id!(id)

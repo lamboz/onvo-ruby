@@ -4,12 +4,6 @@ RSpec.describe Onvo::Configuration do
   subject(:config) { described_class.new }
 
   describe "defaults" do
-    it "defaults to sandbox mode" do
-      config_without_env = described_class.new
-      # When ONVO_SANDBOX is not set, defaults to sandbox=true
-      expect(config_without_env.sandbox).to be(true)
-    end
-
     it "defaults open_timeout to 30" do
       expect(config.open_timeout).to eq(30)
     end
@@ -32,13 +26,14 @@ RSpec.describe Onvo::Configuration do
   end
 
   describe "#api_base" do
-    it "returns the sandbox URL when sandbox is true" do
-      config.sandbox = true
-      expect(config.api_base).to eq("https://api.dev.onvopay.com/v1")
-    end
+    # ONVO's OpenAPI spec declares exactly one server (api.onvopay.com) —
+    # there is no separate sandbox/dev host. Test vs. live mode comes
+    # entirely from which API key prefix you use, not from a config flag
+    # that points at a different URL.
+    it "always returns the single real ONVO host, regardless of which key is configured" do
+      expect(config.api_base).to eq("https://api.onvopay.com/v1")
 
-    it "returns the production URL when sandbox is false" do
-      config.sandbox = false
+      config.secret_key = "onvo_live_secret_key_whatever"
       expect(config.api_base).to eq("https://api.onvopay.com/v1")
     end
   end
@@ -66,29 +61,6 @@ RSpec.describe Onvo::Configuration do
 
     it "reads publishable_key from ONVO_PUBLISHABLE_KEY" do
       expect(described_class.new.publishable_key).to eq("pk_from_env")
-    end
-  end
-
-  describe "ONVO_SANDBOX env var" do
-    around do |example|
-      original = ENV.fetch("ONVO_SANDBOX", nil)
-      example.run
-      ENV["ONVO_SANDBOX"] = original
-    end
-
-    it "sets sandbox=false when ONVO_SANDBOX=false" do
-      ENV["ONVO_SANDBOX"] = "false"
-      expect(described_class.new.sandbox).to be(false)
-    end
-
-    it "sets sandbox=true when ONVO_SANDBOX=true" do
-      ENV["ONVO_SANDBOX"] = "true"
-      expect(described_class.new.sandbox).to be(true)
-    end
-
-    it "sets sandbox=true when ONVO_SANDBOX=1" do
-      ENV["ONVO_SANDBOX"] = "1"
-      expect(described_class.new.sandbox).to be(true)
     end
   end
 

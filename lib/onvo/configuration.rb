@@ -9,13 +9,19 @@ module Onvo
   # Or use a block:
   #   Onvo.configure do |c|
   #     c.secret_key = "sk_live_..."
-  #     c.sandbox    = false
   #   end
   class Configuration
-    SANDBOX_BASE    = "https://api.dev.onvopay.com/v1"
-    PRODUCTION_BASE = "https://api.onvopay.com/v1"
+    # ONVO's OpenAPI spec (docs.onvopay.com/openapi.yaml) declares exactly
+    # one server: https://api.onvopay.com. There is no separate sandbox/dev
+    # host — test vs. live mode is determined entirely by which API key
+    # prefix you use (onvo_test_secret_key_ / onvo_live_secret_key_), same
+    # as the publishable key. A prior version of this SDK assumed a
+    # Stripe-style dual-host split (api.dev.onvopay.com) that doesn't exist
+    # in ONVO's real API — every request sent while "sandbox: true" was
+    # silently going to a host ONVO never serves.
+    API_BASE = "https://api.onvopay.com/v1"
 
-    attr_accessor :secret_key, :publishable_key, :open_timeout, :read_timeout, :max_retries, :logger, :sandbox
+    attr_accessor :secret_key, :publishable_key, :open_timeout, :read_timeout, :max_retries, :logger
 
     def initialize
       @secret_key      = ENV.fetch("ONVO_SECRET_KEY", nil)
@@ -24,18 +30,15 @@ module Onvo
       # entry") needs to render its embedded card component. Distinct from
       # secret_key, which must never leave the server.
       @publishable_key = ENV.fetch("ONVO_PUBLISHABLE_KEY", nil)
-      env              = ENV.fetch("ONVO_SANDBOX", nil)
-      @sandbox         = env.nil? || %w[true 1 yes].include?(env.downcase)
       @open_timeout    = 30
       @read_timeout    = 60
       @max_retries     = 2
       @logger          = nil
     end
 
-    # Returns the API base URL depending on sandbox mode.
-    # If you need a custom URL, subclass or monkey-patch this method.
+    # The API base URL. Always the same host — see API_BASE above.
     def api_base
-      @sandbox ? SANDBOX_BASE : PRODUCTION_BASE
+      API_BASE
     end
 
     # Raise ConfigurationError if the configuration is not usable.
